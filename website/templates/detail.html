@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Violation #{{ row.id }}{% endblock %}
+{% block heading %}Violation #{{ row.id }}{% endblock %}
+{% block subtitle %}Captured {{ row.captured_at|datestamp }} from {{ row.source }}{% endblock %}
+
+{% block content %}
+<div class="grid2">
+  <div class="panel">
+    <h2>Captured image</h2>
+    <p class="hint">Annotated frame plus the worker crop used for the decision</p>
+    {% if img %}
+      <img src="{{ url_for('photo', vid=row.id) }}" alt="violation {{ row.id }}"
+           style="width:100%;border-radius:10px;border:1px solid var(--line);display:block">
+    {% else %}
+      <div class="empty">No image stored for this record.</div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Record data</h2>
+    <p class="hint">Everything the detector logged for this worker</p>
+    <table>
+      <tbody>
+        <tr><th>Rule broken</th><td><span class="pill {{ row.kind }}">{{ row.kind.replace('+',' + ') }}</span></td></tr>
+        <tr><th>Worker</th><td>{% if row.track_id >= 0 %}Worker #{{ row.track_id }}{% else %}—{% endif %}</td></tr>
+        <tr><th>Date</th><td class="mono">{{ row.day }}</td></tr>
+        <tr><th>Time</th><td class="mono">{{ row.time }}</td></tr>
+        <tr><th>Source</th><td class="mono">{{ row.source }}</td></tr>
+        <tr><th>Helmet</th><td><span class="pill {{ row.helmet }}">{{ row.helmet }}</span> · conf {{ '%.2f'|format(row.helmet_conf) }}</td></tr>
+        <tr><th>Safety vest</th><td><span class="pill {{ row.vest }}">{{ row.vest }}</span> · conf {{ '%.2f'|format(row.vest_conf) }}</td></tr>
+        <tr><th>Person conf</th><td>{{ '%.3f'|format(row.person_conf) }}</td></tr>
+        <tr><th>Bounding box</th><td class="mono">[{{ row.box_x1 }}, {{ row.box_y1 }}, {{ row.box_x2 }}, {{ row.box_y2 }}]</td></tr>
+        {% if row.note %}<tr><th>Note</th><td>{{ row.note }}</td></tr>{% endif %}
+      </tbody>
+    </table>
+
+    <div class="pager">
+      <a class="btn sm" href="{{ url_for('day_report', day=row.day) }}">Day report</a>
+      <a class="btn sm ghost" href="{{ url_for('violations', day=row.day) }}">All that day</a>
+      <a class="btn sm ghost" href="{{ url_for('violations') }}">Back to list</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

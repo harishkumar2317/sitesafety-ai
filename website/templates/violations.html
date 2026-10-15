@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Violations{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+{% block subtitle %}Select any workers to open their captured photos and data side by side{% endblock %}
+
+{% block content %}
+<form class="toolbar" method="get" action="{{ url_for('violations') }}">
+  <label class="count">Day</label>
+  <input type="date" name="day" value="{{ filters.day }}">
+  <label class="count">Month</label>
+  <select name="month">
+    <option value="">All months</option>
+    {% for m in all_months %}
+      <option value="{{ m.month }}" {{ 'selected' if filters.month == m.month }}>{{ m.month }} ({{ m.violations }})</option>
+    {% endfor %}
+  </select>
+  <label class="count">Rule</label>
+  <select name="kind">
+    <option value="">All rules</option>
+    <option value="helmet" {{ 'selected' if filters.kind == 'helmet' }}>Helmet missing</option>
+    <option value="vest" {{ 'selected' if filters.kind == 'vest' }}>Safety vest missing</option>
+    <option value="helmet+vest" {{ 'selected' if filters.kind == 'helmet+vest' }}>Both</option>
+  </select>
+  <label class="count">Source</label>
+  <select name="source">
+    <option value="">All sources</option>
+    {% for s in sources %}
+      <option value="{{ s }}" {{ 'selected' if filters.source == s }}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn sm" type="submit">Filter</button>
+  <a class="btn sm ghost" href="{{ url_for('violations') }}">Reset</a>
+  <div class="spacer"></div>
+  <span class="count">{{ total }} record(s)</span>
+  <a class="btn sm ghost" href="{{ url_for('export_csv', **filters) }}">Export CSV</a>
+</form>
+
+{% if rows %}
+<div class="vgrid" id="grid">
+  {% for r in rows %}
+  <div class="vcard flagged">
+    <input class="sel" type="checkbox" data-id="{{ r.id }}" data-kind="{{ r.kind }}"
+           data-track="{{ r.track_id }}" data-day="{{ r.day }}" data-time="{{ r.time }}"
+           data-source="{{ r.source }}" data-conf="{{ r.person_conf }}"
+           data-helmet="{{ r.helmet }}" data-vest="{{ r.vest }}">
+    <a class="open" href="{{ url_for('violation_detail', vid=r.id) }}">Open</a>
+    {% if r.image_path %}
+      <img class="thumb" loading="lazy" src="{{ url_for('photo', vid=r.id) }}" alt="violation {{ r.id }}">
+    {% else %}
+      <div class="thumb empty">no photo stored</div>
+    {% endif %}
+    <div class="body">
+      <div class="row">
+        <span class="t">{{ r.day }} {{ r.time }}</span>
+        <span class="pill {{ r.kind }}">{{ r.kind.replace('+',' + ') }}</span>
+      </div>
+      <div class="who">{% if r.track_id >= 0 %}Worker #{{ r.track_id }}{% else %}Record #{{ r.id }}{% endif %}</div>
+      <div class="meta">helmet: <b>{{ r.helmet }}</b> · vest: <b>{{ r.vest }}</b></div>
+      <div class="meta mono">{{ r.source }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="pager">
+  {% if page > 1 %}
+    <a class="btn ghost sm" href="{{ url_for('violations', page=page-1, **filters) }}">← Previous</a>
+  {% endif %}
+  <span class="count">Page {{ page }} of {{ ((total - 1) // per_page) + 1 }}</span>
+  {% if page * per_page < total %}
+    <a class="btn ghost sm" href="{{ url_for('violations', page=page+1, **filters) }}">Next →</a>
+  {% endif %}
+</div>
+{% else %}
+<div class="empty" style="margin-top:20px">
+  <strong>No violations match these filters</strong>
+  Run Phase 2 on a camera or video, or analyse footage from the upload page.
+  <div style="margin-top:14px"><a class="btn" href="{{ url_for('upload') }}">Analyse footage</a></div>
+</div>
+{% endif %}
+
+<div class="actionbar" id="bar">
+  <span>Selected: <span class="n" id="selCount">0</span></span>
+  <span class="count" id="selKinds"></span>
+  <div class="spacer"></div>
+  <button class="btn ghost sm" id="clearSel" type="button">Clear</button>
+  <a class="btn sm" id="openSel" href="#">Open first selected</a>
+  <button class="btn sm" id="exportSel" type="button">Export selected CSV</button>
+</div>
+
+<!-- modal: selected workers side by side -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:60;padding:30px;overflow:auto">
+  <div style="max-width:1250px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin:0">Selected workers (<span id="modalN">0</span>)</h2>
+      <button class="btn danger sm" id="closeModal" type="button">Close</button>
+    </div>
+    <div id="modalBody" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const boxes = [...document.querySelectorAll('.vcard .sel')];
+const bar = document.getElementById('bar');
+const selCount = document.getElementById('selCount');
+const selKinds = document.getElementById('selKinds');
+
+function selected() { return boxes.filter(b => b.checked); }
+function refresh() {
+  const s = selected();
+  bar.classList.toggle('on', s.length > 0);
+  selCount.textContent = s.length;
+  const kinds = {};
+  s.forEach(b => { kinds[b.dataset.kind] = (kinds[b.dataset.kind] || 0) + 1; });
+  selKinds.textContent = Object.entries(kinds).map(([k,v]) => `${k.replace('+',' + ')}: ${v}`).join('   ');
+  const first = s[0];
+  document.getElementById('openSel').href = first
+    ? `/violations/${first.dataset.id}` : '#';
+}
+boxes.forEach(b => b.addEventListener('change', refresh));
+
+document.getElementById('clearSel').addEventListener('click', () => {
+  boxes.forEach(b => b.checked = false); refresh();
+});
+
+document.getElementById('openSel').addEventListener('click', e => {
+  const s = selected();
+  if (!s.length) { e.preventDefault(); return; }
+  e.preventDefault();
+  showModal(s);
+});
+
+document.getElementById('exportSel').addEventListener('click', () => {
+  const ids = selected().map(b => b.dataset.id);
+  if (!ids.length) return;
+  const head = 'id,day,time,rule,helmet,vest,source,worker,confidence\n';
+  const rows = selected().map(b => [
+    b.dataset.id, b.dataset.day, b.dataset.time, b.dataset.kind,
+    b.dataset.helmet, b.dataset.vest, b.dataset.source,
+    b.dataset.track >= 0 ? 'worker-' + b.dataset.track : 'record-' + b.dataset.id,
+    b.dataset.conf
+  ].join(','));
+  const blob = new Blob([head + rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'selected_violations.csv';
+  a.click();
+});
+
+function showModal(list) {
+  const body = document.getElementById('modalBody');
+  document.getElementById('modalN').textContent = list.length;
+  body.innerHTML = list.map(b => {
+    const id = b.dataset.id;
+    const card = b.closest('.vcard');
+    const thumb = card.querySelector('.thumb');
+    const img = thumb.tagName === 'IMG' ? thumb.outerHTML
+      : '<div class="thumb empty">no photo</div>';
+    return `<div class="vcard flagged" style="animation:none">
+      ${img.replace('class="thumb"','class="thumb"')}
+      <div class="body">
+        <div class="row"><span class="t">${b.dataset.day} ${b.dataset.time}</span>
+        <span class="pill ${b.dataset.kind}">${b.dataset.kind.replace('+',' + ')}</span></div>
+        <div class="who">${b.dataset.track >= 0 ? 'Worker #' + b.dataset.track : 'Record #' + id}</div>
+        <div class="meta">helmet: <b>${b.dataset.helmet}</b> · vest: <b>${b.dataset.vest}</b></div>
+        <div class="meta mono">${b.dataset.source} · conf ${(+b.dataset.conf).toFixed(2)}</div>
+        <div class="meta" style="margin-top:7px"><a href="/violations/${id}">Open full record →</a></div>
+      </div></div>`;
+  }).join('');
+  document.getElementById('modal').style.display = 'block';
+}
+document.getElementById('closeModal').addEventListener('click', () => {
+  document.getElementById('modal').style.display = 'none';
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modal').style.display = 'none';
+});
+refresh();
+</script>
+{% endblock %}

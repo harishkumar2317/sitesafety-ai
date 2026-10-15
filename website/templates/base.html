@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SiteGuard{% endblock %} · Construction Safety Monitor</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script src="{{ url_for('static', filename='js/chart.umd.js') }}"></script>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">SG</div>
+      <div>
+        <div class="brand-name">SiteGuard</div>
+        <div class="brand-sub">Central Safety Monitor</div>
+      </div>
+    </div>
+
+    <nav>
+      <a class="{{ 'is-active' if active == 'dashboard' }}" href="{{ url_for('dashboard') }}">
+        <span class="ico">▦</span> Dashboard</a>
+      <a class="{{ 'is-active' if active == 'violations' }}" href="{{ url_for('violations') }}">
+        <span class="ico">⚠</span> Violations</a>
+      <a class="{{ 'is-active' if active == 'day' }}" href="{{ url_for('day_report') }}">
+        <span class="ico">📅</span> Today's Report</a>
+      <a class="{{ 'is-active' if active == 'history' }}" href="{{ url_for('history') }}">
+        <span class="ico">🗂</span> Month History</a>
+      <a class="{{ 'is-active' if active == 'members' }}" href="{{ url_for('members') }}">
+        <span class="ico">👷</span> Repeat Offenders</a>
+      <a class="{{ 'is-active' if active == 'upload' }}" href="{{ url_for('upload') }}">
+        <span class="ico">⬆</span> Analyse Footage</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="mini-label">Detection engine</div>
+      <div class="mini">OpenCV + YOLOv8 PPE</div>
+      <div class="mini-label">Stored records</div>
+      <div class="mini">{{ all_months|length }} month(s) of history</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1>{% block heading %}Dashboard{% endblock %}</h1>
+        <p class="sub">{% block subtitle %}Live view of construction-site PPE compliance{% endblock %}</p>
+      </div>
+      <div class="topbar-right">
+        <form class="jump" method="get" action="{{ url_for('violations') }}">
+          <input type="text" name="day" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}">
+          <button type="submit">Open day</button>
+        </form>
+        <a class="btn ghost" href="{{ url_for('day_report') }}">Today</a>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

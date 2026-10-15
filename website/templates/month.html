@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ month|monthname }}{% endblock %}
+{% block heading %}{{ month|monthname }} · Month History{% endblock %}
+{% block subtitle %}Day-by-day record of PPE violations and the members behind them{% endblock %}
+
+{% block content %}
+<div class="cards">
+  <div class="card bad">
+    <div class="k">Violations</div><div class="v">{{ data.violations }}</div>
+    <div class="n">in {{ month|monthname }}</div>
+  </div>
+  <div class="card warn">
+    <div class="k">Members violating</div><div class="v">{{ data.members }}</div>
+    <div class="n">unique workers</div>
+  </div>
+  <div class="card info">
+    <div class="k">No helmet</div><div class="v">{{ data.helmet_missing }}</div>
+    <div class="n">helmet breaches</div>
+  </div>
+  <div class="card info">
+    <div class="k">No safety vest</div><div class="v">{{ data.vest_missing }}</div>
+    <div class="n">vest breaches</div>
+  </div>
+  <div class="card">
+    <div class="k">Active days</div><div class="v">{{ data.active_days }}</div>
+    <div class="n">days with records</div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Daily breakdown</h2>
+    <p class="hint">Every day of {{ month|monthname }} that produced records</p>
+    {% if data.days %}
+    <table>
+      <thead><tr><th>Day</th><th class="num">Violations</th><th class="num">Members</th><th></th></tr></thead>
+      <tbody>
+        {% for d in data.days %}
+        <tr>
+          <td class="mono">{{ d.day }}</td>
+          <td class="num">{{ d.violations }}</td>
+          <td class="num">{{ d.members }}</td>
+          <td style="text-align:right">
+            <a class="btn sm ghost" href="{{ url_for('day_report', day=d.day) }}">Day report</a>
+            <a class="btn sm ghost" href="{{ url_for('violations', day=d.day) }}">Records</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No records in this month.</div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Violations per day</h2>
+    <p class="hint">Bar chart of {{ month|monthname }}</p>
+    <div class="chart-box"><canvas id="dayChart"></canvas></div>
+
+    <h2 style="margin-top:22px">Rule breakdown</h2>
+    <table>
+      <thead><tr><th>Rule</th><th class="num">Count</th></tr></thead>
+      <tbody>
+        {% for k in data.kinds %}
+        <tr><td><span class="pill {{ k.kind }}">{{ k.kind.replace('+',' + ') }}</span></td>
+            <td class="num">{{ k.c }}</td></tr>
+        {% else %}
+        <tr><td colspan="2" style="color:var(--muted)">No data</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pager">
+      <a class="btn sm" href="{{ url_for('violations', month=month) }}">All {{ data.violations }} records</a>
+      <a class="btn sm ghost" href="{{ url_for('export_csv', month=month) }}">Export CSV</a>
+      <a class="btn sm ghost" href="{{ url_for('history') }}">← All months</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const days = {{ data.days|tojson }};
+new Chart(document.getElementById('dayChart'), {
+  type:'bar',
+  data:{
+    labels: days.map(d => d.day.slice(8)),
+    datasets:[
+      { label:'Violations', data: days.map(d => d.violations),
+        backgroundColor:'rgba(248,81,73,.85)', borderRadius:4 },
+      { label:'Members', data: days.map(d => d.members),
+        type:'line', borderColor:'#4da3ff', backgroundColor:'#4da3ff',
+        tension:.35, pointRadius:3, borderWidth:2 }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#8b98a9', boxWidth:12 } } },
+    scales:{
+      x:{ ticks:{ color:'#8b98a9' }, grid:{ color:'rgba(255,255,255,.05)' } },
+      y:{ beginAtZero:true, ticks:{ color:'#8b98a9', precision:0 },
+          grid:{ color:'rgba(255,255,255,.06)' } }
+    }
+  }
+});
+</script>
+{% endblock %}

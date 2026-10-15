@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Analyse footage{% endblock %}
+{% block heading %}Analyse Footage{% endblock %}
+{% block subtitle %}Upload a site video or photo — Phase 2 runs and the results land in the dashboard{% endblock %}
+
+{% block content %}
+<div class="grid2">
+  <div class="panel">
+    <h2>Upload video or image</h2>
+    <p class="hint">mp4 / avi / mov / mkv / webm video, or jpg / png / webp photo</p>
+
+    <form method="post" enctype="multipart/form-data" id="upForm">
+      <div style="border:1px dashed var(--line);border-radius:12px;padding:26px;text-align:center;background:var(--panel2)">
+        <div style="font-weight:700;margin-bottom:6px">Choose footage from the construction site</div>
+        <div class="hint" style="margin-bottom:12px">It will be scanned for workers without a helmet or safety vest</div>
+        <input type="file" name="file" id="file" accept="video/*,image/*" required
+               style="color:var(--muted)">
+      </div>
+
+      <div class="cards" style="grid-template-columns:1fr 1fr;margin-top:16px">
+        <div class="card">
+          <div class="k">Cooldown (seconds)</div>
+          <input type="number" name="cooldown" value="6" min="0" step="1"
+                 style="width:100%;margin-top:8px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:8px;border-radius:8px">
+          <div class="n">Same worker logged once per window</div>
+        </div>
+        <div class="card">
+          <div class="k">Session label</div>
+          <input type="text" name="label" placeholder="e.g. Zone B morning"
+                 style="width:100%;margin-top:8px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:8px;border-radius:8px">
+          <div class="n">Stored with the run</div>
+        </div>
+      </div>
+
+      <label style="display:flex;gap:9px;align-items:center;margin-top:14px;cursor:pointer">
+        <input type="checkbox" name="strict">
+        <span><b>Strict mode</b> — treat "not detected" as a violation too</span>
+      </label>
+
+      <div class="pager">
+        <button class="btn" type="submit">Start analysis</button>
+        <span class="count" id="fileName"></span>
+      </div>
+    </form>
+
+    <div id="progWrap" style="display:none">
+      <div class="progress"><i id="bar"></i></div>
+      <div class="count" id="progText" style="margin-top:8px">Running…</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>How it works</h2>
+    <p class="hint">The three phases of this project</p>
+    <div class="steps">
+      <div class="step"><span class="n"></span><span class="tx">
+        <b>Phase 1 — OpenCV person detection</b>
+        OpenCV reads the frames and YOLOv8 boxes every worker on site.
+        <code class="mono">python phase1_detect.py --source 0</code></span></div>
+      <div class="step"><span class="n"></span><span class="tx">
+        <b>Phase 2 — Safety feature detection</b>
+        Each worker is checked for helmet and safety vest. Violations are photographed and written to SQLite.
+        <code class="mono">python phase2_monitor.py --source video.mp4</code></span></div>
+      <div class="step"><span class="n"></span><span class="tx">
+        <b>Phase 3 — Central website</b>
+        This dashboard shows who broke the rules, their photos, the daily count and month history.
+        <code class="mono">python website/app.py</code></span></div>
+    </div>
+
+    <div class="pager">
+      <a class="btn ghost sm" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+      <a class="btn ghost sm" href="{{ url_for('day_report') }}">Today's report</a>
+    </div>
+  </div>
+</div>
+
+{% if job %}
+<div class="panel" id="jobPanel">
+  <h2>Job status</h2>
+  <p class="hint">{{ job.file }} · {{ job.label }}</p>
+  <div class="progress"><i id="jbar" style="width:6%"></i></div>
+  <div class="count" id="jtext" style="margin-top:8px">running…</div>
+  <div class="pager"><a class="btn sm" href="{{ url_for('dashboard') }}">Open dashboard</a></div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const fileInput = document.getElementById('file');
+fileInput.addEventListener('change', () => {
+  document.getElementById('fileName').textContent =
+    fileInput.files.length ? fileInput.files[0].name : '';
+});
+
+const form = document.getElementById('upForm');
+form.addEventListener('submit', () => {
+  document.getElementById('progWrap').style.display = 'block';
+  document.getElementById('progText').textContent = 'Uploading and starting analysis…';
+  document.getElementById('bar').style.width = '8%';
+});
+
+{% if job_id %}
+const JOB = {{ job_id|tojson }};
+const jbar = document.getElementById('jbar');
+const jtext = document.getElementById('jtext');
+const tick = async () => {
+  try {
+    const r = await fetch('/api/job/' + JOB);
+    const j = await r.json();
+    const pct = j.total ? Math.min(100, (j.done / j.total) * 100) : (j.status === 'done' ? 100 : 45);
+    jbar.style.width = pct + '%';
+    jtext.textContent = j.status === 'error'
+      ? 'Error: ' + j.error
+      : `${j.status} · ${j.done}/${j.total || '?'} frames · ${j.persons} workers seen · ${j.violations} violations`;
+    if (j.status !== 'running') {
+      jtext.textContent += '  →  analysis complete';
+      clearInterval(timer);
+    }
+  } catch (e) { /* keep polling */ }
+};
+const timer = setInterval(tick, 1200);
+tick();
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Month history{% endblock %}
+{% block heading %}Month History{% endblock %}
+{% block subtitle %}Every monitored month with its violations and member count{% endblock %}
+
+{% block content %}
+{% if months %}
+<div class="panel">
+  <h2>Select a month</h2>
+  <p class="hint">Click a month to see the day-by-day breakdown</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Month</th><th class="num">Violations</th><th class="num">Members</th>
+        <th class="num">Active days</th><th>Range</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in months %}
+      <tr>
+        <td><b>{{ m.month|monthname }}</b></td>
+        <td class="num">{{ m.violations }}</td>
+        <td class="num">{{ m.members }}</td>
+        <td class="num">{{ m.active_days }}</td>
+        <td class="mono">{{ m.first_day }} → {{ m.last_day }}</td>
+        <td style="text-align:right">
+          <a class="btn sm" href="{{ url_for('month_report', month=m.month) }}">Open</a>
+          <a class="btn sm ghost" href="{{ url_for('violations', month=m.month) }}">Records</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Trend across months</h2>
+  <p class="hint">Total violations per month</p>
+  <div class="chart-box sm"><canvas id="monthChart"></canvas></div>
+</div>
+{% else %}
+<div class="empty" style="margin-top:22px">
+  <strong>No history yet</strong>
+  Run Phase 2 detection or upload footage to start collecting daily records.
+  <div style="margin-top:14px"><a class="btn" href="{{ url_for('upload') }}">Analyse footage</a></div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if months %}
+<script>
+const months = {{ months|tojson }};
+new Chart(document.getElementById('monthChart'), {
+  type: 'bar',
+  data: {
+    labels: months.map(m => m.month),
+    datasets: [
+      { label:'Violations', data: months.map(m => m.violations),
+        backgroundColor:'rgba(248,81,73,.85)', borderRadius:4 },
+      { label:'Members', data: months.map(m => m.members),
+        backgroundColor:'rgba(77,163,255,.85)', borderRadius:4 }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#8b98a9', boxWidth:12 } } },
+    scales:{
+      x:{ ticks:{ color:'#8b98a9' }, grid:{ color:'rgba(255,255,255,.05)' } },
+      y:{ beginAtZero:true, ticks:{ color:'#8b98a9', precision:0 },
+          grid:{ color:'rgba(255,255,255,.06)' } }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

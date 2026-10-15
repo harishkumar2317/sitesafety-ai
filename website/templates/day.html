@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Day report{% endblock %}
+{% block heading %}Day Report · {{ day|prettydate }}{% endblock %}
+{% block subtitle %}How many members broke the safety rules on this day{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a class="btn ghost sm" href="{{ url_for('day_report', day=yesterday) }}">← {{ yesterday }}</a>
+  <input type="date" id="dayPick" value="{{ day }}">
+  <button class="btn sm" type="button" onclick="jump()">Go</button>
+  <a class="btn ghost sm" href="{{ url_for('day_report', day=tomorrow) }}">{{ tomorrow }} →</a>
+  <div class="spacer"></div>
+  <a class="btn ghost sm" href="{{ url_for('violations', day=day) }}">Raw records</a>
+  <a class="btn ghost sm" href="{{ url_for('export_csv', day=day) }}">Export CSV</a>
+</div>
+
+<div class="cards">
+  <div class="card {{ 'bad' if stats.violations else 'ok' }}">
+    <div class="k">Violations this day</div><div class="v">{{ stats.violations }}</div>
+    <div class="n">total breaches recorded</div>
+  </div>
+  <div class="card warn">
+    <div class="k">Members violating</div><div class="v">{{ stats.members }}</div>
+    <div class="n">unique workers who broke a rule</div>
+  </div>
+  <div class="card info">
+    <div class="k">Helmet missing</div><div class="v">{{ stats.helmet_missing }}</div>
+    <div class="n">head protection breaches</div>
+  </div>
+  <div class="card info">
+    <div class="k">Safety vest missing</div><div class="v">{{ stats.vest_missing }}</div>
+    <div class="n">visibility vest breaches</div>
+  </div>
+  <div class="card">
+    <div class="k">Sources watched</div><div class="v">{{ stats.sources }}</div>
+    <div class="n">cameras / files</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Members who violated the rules</h2>
+  <p class="hint">Each entry is one tracked worker · click a photo to open the full record</p>
+
+  {% if members %}
+    {% for m in members %}
+    <div class="member">
+      <a href="{{ url_for('violation_detail', vid=m.photo) }}">
+        <img class="avatar" src="{{ url_for('photo', vid=m.photo) }}" alt="{{ m.member }}">
+      </a>
+      <div class="info">
+        <div class="name">{{ m.member }}
+          <span class="pill helmet" style="margin-left:8px">{{ m.violations }} breach(es)</span>
+        </div>
+        <div class="line">First seen {{ m.first }} · last seen {{ m.last }} · {{ m.source }}</div>
+        <div class="badges">
+          {% if m.helmet %}<span class="pill helmet">no helmet × {{ m.helmet }}</span>{% endif %}
+          {% if m.vest %}<span class="pill vest">no vest × {{ m.vest }}</span>{% endif %}
+          <span class="pill safe">{{ m.ids|length }} photo(s)</span>
+        </div>
+      </div>
+      <a class="btn sm ghost" href="{{ url_for('violation_detail', vid=m.photo) }}">Open</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <strong>No violations on {{ day }}</strong>
+      Either the site was fully compliant, or nothing was analysed on this date.
+    </div>
+  {% endif %}
+</div>
+
+{% if rows %}
+<div class="panel">
+  <h2>All records for {{ day }}</h2>
+  <table>
+    <thead><tr><th>Photo</th><th>Time</th><th>Rule</th><th>Worker</th><th>Source</th><th class="num">Conf</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{% if r.image_path %}<img src="{{ url_for('photo', vid=r.id) }}" style="width:54px;height:34px;object-fit:cover;border-radius:5px">{% else %}-{% endif %}</td>
+        <td class="mono">{{ r.time }}</td>
+        <td><span class="pill {{ r.kind }}">{{ r.kind.replace('+',' + ') }}</span></td>
+        <td>{% if r.track_id >= 0 %}Worker #{{ r.track_id }}{% else %}Record #{{ r.id }}{% endif %}</td>
+        <td class="mono">{{ r.source }}</td>
+        <td class="num">{{ '%.2f'|format(r.person_conf) }}</td>
+        <td><a class="btn sm ghost" href="{{ url_for('violation_detail', vid=r.id) }}">Open</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="footer-note">Daily summary generated from data/safety.db</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function jump(){
+  const v = document.getElementById('dayPick').value;
+  if (v) location.href = '/day/' + v;
+}
+</script>
+{% endblock %}

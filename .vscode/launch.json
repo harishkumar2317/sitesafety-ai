@@ -1,0 +1,96 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Phase 1 - Person Detection",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/phase1_detect.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["--source", "0"]
+    },
+    {
+      "name": "Phase 1 - Demo Video",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/phase1_detect.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["--source", "${workspaceFolder}/assets/site1.jpg", "--no-show"]
+    },
+    {
+      "name": "Phase 2 - Safety Monitor",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/phase2_monitor.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["--source", "0"]
+    },
+    {
+      "name": "Phase 2 - Demo Video",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/phase2_monitor.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "--source",
+        "${workspaceFolder}/data/uploads/demo_site_feed.mp4",
+        "--cooldown", "6",
+        "--label", "demo-camera-feed"
+      ]
+    },
+    {
+      "name": "Phase 2 - Photo Folder",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/phase2_monitor.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["--source", "${workspaceFolder}/assets/testset", "--cooldown", "0"]
+    },
+    {
+      "name": "Phase 3 - Website",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/website/app.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "HOST": "127.0.0.1",
+        "PORT": "5000"
+      }
+    },
+    {
+      "name": "Fetch Weights",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/fetch_weights.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Make Demo Video",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/make_demo_video.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Seed Demo Data",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/seed_demo_data.py",
+      "console": "integratedTerminal",
+      "args": ["--days", "60"]
+    },
+    {
+      "name": "Smoke Test",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/smoke_test.py",
+      "console": "integratedTerminal"
+    }
+  ]
+}

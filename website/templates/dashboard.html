@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Safety Dashboard{% endblock %}
+{% block subtitle %}Everything the OpenCV + YOLOv8 monitors found across all sites{% endblock %}
+
+{% block content %}
+{% set t = stats.totals %}
+{% set td = stats.today %}
+
+<div class="cards">
+  <div class="card {{ 'bad' if td.violations else 'ok' }}">
+    <div class="k">Violations today</div>
+    <div class="v">{{ td.violations }}</div>
+    <div class="n">{{ td.day }}</div>
+  </div>
+  <div class="card warn">
+    <div class="k">Members violating today</div>
+    <div class="v">{{ td.members }}</div>
+    <div class="n">unique workers flagged</div>
+  </div>
+  <div class="card info">
+    <div class="k">No helmet (today)</div>
+    <div class="v">{{ td.helmet_missing }}</div>
+    <div class="n">helmet rule breaches</div>
+  </div>
+  <div class="card info">
+    <div class="k">No safety vest (today)</div>
+    <div class="v">{{ td.vest_missing }}</div>
+    <div class="n">vest rule breaches</div>
+  </div>
+  <div class="card">
+    <div class="k">Total records</div>
+    <div class="v">{{ t.violations }}</div>
+    <div class="n">since {{ t.first_day or 'first run' }}</div>
+  </div>
+  <div class="card">
+    <div class="k">Days monitored</div>
+    <div class="v">{{ t.active_days }}</div>
+    <div class="n">{{ t.members }} member(s) ever flagged</div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Daily violations</h2>
+    <p class="hint">Last 30 monitored days · red = helmet missing, amber = safety vest missing</p>
+    <div class="chart-box"><canvas id="dailyChart"></canvas></div>
+  </div>
+  <div class="panel">
+    <h2>Violation type mix</h2>
+    <p class="hint">All recorded breaches</p>
+    <div class="chart-box"><canvas id="kindChart"></canvas></div>
+    <div style="margin-top:14px">
+      {% for k in stats.kinds %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)">
+        <span>{{ k.kind.replace('+',' + ') }}</span><b>{{ k.c }}</b>
+      </div>
+      {% else %}
+      <p class="hint">No violations stored yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Latest violations</h2>
+    <p class="hint">Click a record to open its captured photo and data</p>
+    <table>
+      <thead><tr>
+        <th>Photo</th><th>Captured</th><th>Rule broken</th><th>Worker</th>
+        <th>Source</th><th class="num">Conf</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for r in stats.recent %}
+        <tr>
+          <td>{% if r.image_path %}<img src="{{ url_for('photo', vid=r.id) }}" style="width:56px;height:36px;object-fit:cover;border-radius:5px">{% else %}-{% endif %}</td>
+          <td class="mono">{{ r.day }} {{ r.time }}</td>
+          <td><span class="pill {{ r.kind }}">{{ r.kind.replace('+',' + ') }}</span></td>
+          <td>{% if r.track_id >= 0 %}Worker #{{ r.track_id }}{% else %}Record #{{ r.id }}{% endif %}</td>
+          <td class="mono">{{ r.source }}</td>
+          <td class="num">{{ '%.2f'|format(r.person_conf) }}</td>
+          <td><a class="btn sm ghost" href="{{ url_for('violation_detail', vid=r.id) }}">Open</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:22px">
+          No violations yet — run Phase 2 or upload footage.
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if stats.recent %}
+    <div class="pager"><a class="btn ghost sm" href="{{ url_for('violations') }}">See all {{ stats.totals.violations }} records →</a></div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Sources</h2>
+    <p class="hint">Where the breaches were recorded</p>
+    <table>
+      <thead><tr><th>Camera / file</th><th class="num">Violations</th></tr></thead>
+      <tbody>
+      {% for s in stats.sources %}
+        <tr><td class="mono">{{ s.source }}</td><td class="num">{{ s.c }}</td></tr>
+      {% else %}
+        <tr><td colspan="2" style="color:var(--muted)">No data yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <h2 style="margin-top:22px">Recent detection runs</h2>
+    <table>
+      <thead><tr><th>Source</th><th>Started</th><th class="num">Frames</th><th class="num">Hits</th></tr></thead>
+      <tbody>
+      {% for s in stats.sessions %}
+        <tr>
+          <td class="mono">{{ s.source }}</td>
+          <td class="mono">{{ s.started_at|datestamp }}</td>
+          <td class="num">{{ s.frames }}</td>
+          <td class="num">{{ s.violations }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" style="color:var(--muted)">No sessions yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pager">
+      <a class="btn sm" href="{{ url_for('upload') }}">Analyse new footage</a>
+      <a class="btn sm ghost" href="{{ url_for('history') }}">Month history</a>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note">SiteGuard · OpenCV + YOLOv8 PPE detection · Phase 3 central website</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const series = {{ stats.series|tojson }};
+const labels = series.map(r => r.day.slice(5));
+const palette = {
+  borderWidth: 1.5,
+  borderRadius: 4,
+};
+
+new Chart(document.getElementById('dailyChart'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: 'No helmet', data: series.map(r => r.helmet_missing),
+        backgroundColor: 'rgba(248,81,73,.85)', stack: 'a', ...palette },
+      { label: 'No vest', data: series.map(r => r.vest_missing),
+        backgroundColor: 'rgba(210,153,34,.85)', stack: 'a', ...palette },
+      { label: 'Members violating', data: series.map(r => r.members),
+        type: 'line', borderColor: '#4da3ff', backgroundColor: '#4da3ff',
+        tension: .35, pointRadius: 3, borderWidth: 2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#8b98a9', boxWidth: 12 } } },
+    scales: {
+      x: { stacked: true, ticks: { color: '#8b98a9', maxRotation: 0, autoSkip: true },
+           grid: { color: 'rgba(255,255,255,.05)' } },
+      y: { stacked: true, beginAtZero: true, ticks: { color: '#8b98a9', precision: 0 },
+           grid: { color: 'rgba(255,255,255,.06)' } }
+    }
+  }
+});
+
+const kinds = {{ stats.kinds|tojson }};
+new Chart(document.getElementById('kindChart'), {
+  type: 'doughnut',
+  data: {
+    labels: kinds.map(k => k.kind.replace('+',' + ')),
+    datasets: [{
+      data: kinds.map(k => k.c),
+      backgroundColor: ['#f85149', '#d29922', '#a371f7'],
+      borderColor: '#161b22', borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '62%',
+    plugins: { legend: { position: 'bottom', labels: { color: '#8b98a9', boxWidth: 12 } } }
+  }
+});
+</script>
+{% endblock %}

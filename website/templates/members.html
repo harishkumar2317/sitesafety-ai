@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Repeat offenders{% endblock %}
+{% block heading %}Repeat Offenders{% endblock %}
+{% block subtitle %}Workers tracked across frames and how often they broke the rules{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <h2>All members ever flagged</h2>
+  <p class="hint">Track id is stable within one detection run, so the same worker is only counted once per run</p>
+  {% if members %}
+  <table>
+    <thead>
+      <tr>
+        <th>Member</th><th class="num">Breaches</th><th class="num">No helmet</th>
+        <th class="num">No vest</th><th>First seen</th><th>Last seen</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td><b>{{ m.member }}</b></td>
+        <td class="num">{{ m.violations }}</td>
+        <td class="num">{{ m.helmet_hits }}</td>
+        <td class="num">{{ m.vest_hits }}</td>
+        <td class="mono">{{ m.first_day }}</td>
+        <td class="mono">{{ m.last_day }}</td>
+        <td style="text-align:right">
+          <a class="btn sm ghost" href="{{ url_for('violations', month=m.last_day[:7]) }}">Records</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <strong>No members flagged yet</strong>
+    Start a Phase 2 detection run to begin tracking workers.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
