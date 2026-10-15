@@ -14,9 +14,9 @@ PHASE 3  →  central website            (website/app.py)
 ---
 ---
 
-# 👉 FOR MY BROTHER — how to clone and run (do this exactly)
+# 🚀 Quick Start — clone and run
 
-You need: a Windows PC, internet, and about 20 minutes the first time.
+Requirements: a Windows PC, internet, and about 20 minutes the first time.
 You do **not** need a graphics card or a webcam.
 
 ---
@@ -50,8 +50,8 @@ dir
 ```
 
 You should see files like `phase1_detect.py`, `phase2_monitor.py`, `website`.
-✅ If you see them, you are in the right place. ❌ If it says something is not
-recognized, tell me the exact message.
+✅ If you see them, you are in the right place. ❌ If a command is not
+recognized, copy the **exact** error message.
 
 ---
 
@@ -231,7 +231,7 @@ python website/app.py
 
 ⚠️ Windows Firewall may pop up — click **Allow** for Python on *Private networks*.
 
-> For a normal demo or submission you do **not** need this. Just running
+> For a normal demo or presentation you do **not** need this. Just running
 > `python website/app.py` on your own laptop is enough.
 
 ---
@@ -270,7 +270,7 @@ If either is `missing` → photo taken + record saved.
 | **Web server** | **Flask** | A tiny Python web server — no Node.js, no build step. One language for the whole project. |
 | **Web pages** | **HTML + Jinja + JavaScript** | Pages are rendered by Flask. JavaScript only draws the charts and handles the tick-to-select. |
 | **Charts** | **Chart.js** | Bundled inside the project so the website works **offline**. |
-| **Database** | **SQLite** (`data/safety.db`) | A real SQL database that is just one file — nothing to install, easy to hand in. |
+| **Database** | **SQLite** (`data/safety.db`) | A real SQL database that is just one file — nothing to install, easy to back up or archive. |
 | **Model download** | **Hugging Face Hub** | Where the pre-trained PPE weights come from. |
 
 ### Who does what
@@ -452,7 +452,8 @@ The AI only **detects and reports**. It never acts by itself:
 | The `(.venv)` disappeared from the terminal | Re-run `.venv\Scripts\Activate.ps1` |
 | `git` is not recognized | Install from <https://git-scm.com/download/win>, then restart your computer. |
 
-**Still stuck?** Copy the **exact** error message and send it to me.
+**Still stuck?** Open a [GitHub issue](https://github.com/harishkumar2317/sitesafety-ai/issues)
+and paste the **exact** error message plus which step you were on.
 
 ---
 ---
